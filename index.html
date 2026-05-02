@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Triangle Code Generator</title>
+    <style>
+      * {
+        box-sizing: border-box; /* Prevents padding from breaking widths */
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: stretch; /* Allow sidebar to fill height */
+        height: 100vh;
+        background-color: #f0f0f0;
+        margin: 0;
+        flex-direction: row, column;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        gap: 40px;
+      }
+
+      .main-content {
+        flex: 1; /* Takes up all remaining space */
+        display: flex;
+        flex-direction: row, column; /* Logo and Panel side-by-side */
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        padding: 20px;
+        overflow-y: auto; /* Allows panel/logo to scroll if window is short */
+        flex-grow: 1;
+        background: #f0f0f0;
+      }
+
+      .sidebar-header {
+        padding: 20px;
+        background: #0a0a0a;
+        color: #ecbc5b;
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+
+      .sidebar {
+        width: 320px;
+        height: 100vh; /* Full screen height */
+        background: white;
+        border-left: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        right: 0;
+        top: 0;
+      }
+
+      .sidebar-category {
+        flex: 1; /* Each section takes 50% of height */
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* Critical for enabling internal scroll */
+        border-bottom: 2px solid #eee;
+      }
+
+      .sidebar-section-header {
+        padding: 15px 20px;
+        background: #252a28; /* Darker version of InstanceParams[1] */
+        color: rgb(154, 134, 104); /* InstanceParams[2] */
+        font-size: 0.75em;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+      }
+
+      .preset-list {
+        flex-grow: 1;
+        overflow-y: auto; /* Independent scrollbar */
+        padding: 10px 0;
+        background: #fafafa;
+      }
+
+      /* Custom scrollbar for a cleaner look */
+      .preset-list::-webkit-scrollbar {
+        width: 6px;
+      }
+      .preset-list::-webkit-scrollbar-thumb {
+        background: #ddd;
+        border-radius: 10px;
+      }
+
+      .preset-item {
+        margin: 10px;
+        padding: 12px;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        cursor: pointer;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition:
+          border-color 0.2s,
+          background-color 0.2s;
+      }
+
+      .preset-header {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .preset-item.active {
+        border-color: rgb(154, 134, 104);
+        background: #f4f6f5;
+        box-shadow: inset 4px 0 0 rgb(154, 134, 104);
+      }
+
+      .preset-name {
+        font-weight: 600;
+        color: #222;
+        font-size: 0.95em;
+      }
+
+      .preset-desc {
+        font-size: 0.85em;
+        color: #666;
+        line-height: 1.3;
+        margin-top: 2px;
+      }
+
+      .preset-id {
+        font-size: 0.7em;
+        color: #cfa867; /* Match logo gold */
+        font-weight: 800;
+        white-space: nowrap;
+        display: block;
+      }
+
+      .preset-item:hover {
+        background: #fff9f0;
+        border-color: #ecbc5b;
+      }
+
+      .preset-item.active {
+        background: #fff5e6;
+        border-color: #ecbc5b;
+        border-left-width: 5px;
+      }
+
+      .preset-id {
+        font-size: 0.8em;
+        color: #888;
+        font-weight: bold;
+      }
+
+      .preset-description {
+        font-weight: 600;
+        color: #222;
+      }
+
+      .logo-container {
+        border: 4px solid rgb(154, 134, 104); /* Hex approx of InstanceParams[2] */
+        padding: 40px;
+        background-color: rgb(64, 80, 72); /* Hex approx of InstanceParams[1] */
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+      }
+
+      canvas {
+        display: block;
+        cursor: crosshair;
+        background-color: #0a0a0a;
+      }
+
+      .ui-panel {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        width: 400px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        flex-shrink: 0;
+      }
+
+      .instructions {
+        color: #444;
+        line-height: 1.6;
+        font-size: 0.95em;
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+      }
+
+      kbd {
+        background: #fff;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid #bbb;
+        font-family: monospace;
+        font-weight: bold;
+        font-size: 0.85em;
+      }
+
+      .meta-box {
+        border-left: 4px solid rgb(154, 134, 104);
+        padding-left: 15px;
+      }
+
+      .meta-title {
+        font-size: 1.4em;
+        font-weight: bold;
+        color: #222;
+        margin-bottom: 5px;
+      }
+
+      .meta-desc {
+        color: #555;
+        margin-bottom: 10px;
+        font-size: 0.95em;
+        line-height: 1.4;
+      }
+
+      .meta-url a {
+        color: #0066cc;
+        text-decoration: none;
+        font-weight: bold;
+        word-break: break-all;
+      }
+
+      .meta-url a:hover {
+        text-decoration: underline;
+      }
+
+      .hash-string {
+        font-family: monospace;
+        color: #888;
+        font-size: 0.85em;
+        word-break: break-all;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="logo-container">
+        <canvas id="glcanvas" width="600" height="600"></canvas>
+      </div>
+
+      <div class="ui-panel">
+        <div class="instructions">
+          <strong>Controls:</strong><br />
+          * <kbd>Click</kbd> to toggle <strong>On / Off</strong>.<br />
+          * <kbd>Shift</kbd> + <kbd>Click</kbd> to <strong>Subdivide</strong>.<br />
+          * <kbd>Alt</kbd> + <kbd>Click</kbd> to <strong>Merge</strong> (Combine).
+        </div>
+
+        <div class="meta-box" id="metaInfo">
+          <div class="meta-title" id="displayTitle">Unknown Configuration</div>
+          <div class="meta-desc" id="displayDesc">
+            Modify the Code to discover unknown patterns.
+          </div>
+          <div class="meta-url" id="displayUrl"></div>
+          <div class="hash-string" id="displayHash">Hash: ...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-category">
+        <div class="sidebar-section-header">In-Game Patterns</div>
+        <div class="preset-list" id="inGameList"></div>
+      </div>
+      <div class="sidebar-category">
+        <div class="sidebar-section-header">IRL Patterns</div>
+        <div class="preset-list" id="irlList"></div>
+      </div>
+    </div>
+
+    <script>
+      // --- 1. MAPPED CONFIGURATION DATABASE ---
+      // Keys are the Base64 hashes generated by the tree structure.
+      const dbInGame = {
+        U1NTR0hISFNHR0dIU0hIR0hIU1NHSEdHU0dHSEhTR0hISEhTU0hHSEhTSEdISFNHSEhISEg: {
+          id: 1,
+          title: "Dubai",
+          description:
+            "In the airshaft behind you after you jump down from a platform. ",
+          url: "https://www.youtube.com/watch?v=1yTyUFFCKhY",
+        },
+        U1NTSEdISFNISEhHU0dIR0hIU0dTSEhHR0dIU1NHR0hIU0hHR0hHSEg: {
+          id: 2,
+          title: "Dubai",
+          description:
+            "In the atrium, on top of a container to the right of the helicopter.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode2-dubai-sandstorm/s-hMLDR",
+        },
+        U1NTSEdISFNHR0dHU0hHR0hIU1NISEdHU0dHR0dTR0dHR0hTU0dHSEhTR0hISFNHSEdISEg: {
+          id: 3,
+          title: "Prague",
+          description:
+            "Inside a second floor apartment in the Red Light District, near the Irish Stool. It is hidden under a cardboard box on the shelf.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode3-visit-to-prague/s-ZSaJz",
+        },
+        U1NHU0dISEhTSEdISEhTU0dHSEdTSEdIR1NHR0hHSFNTSEdHSFNHSEhIU0hIR0hISA: {
+          id: 4,
+          title: "Prague",
+          description:
+            "Inside Pilgrim Station, in a cardboard box on top of a row of lockers.",
+          url: "https://deusex.fandom.com/wiki/File:Palisade_Bank_lobby_concept.jpg",
+        },
+        U1NTR0dHSFNISEhHU0hHSEhIU1NHR0hIU0hHSEdTR0hHR0hTU0hHR0hTR0hISFNHR0hISEg: {
+          id: 5,
+          title: "Prague",
+          description:
+            "Inside Palisade Station, in a room accessible through a vent, on a shelf between the clean bottles.",
+          url: "https://www.youtube.com/watch?v=iRfdr9RQx-s",
+        },
+        U1NTSEhHR1NIR0dIU0dHSEhIU1NHSEhHU0dHSEdTSEdHSEhTU0dISEhTR0dISFNHSEdISEg: {
+          id: 6,
+          title: "Prague",
+          description:
+            "In an office in the Tourist Center, northern Prague. It can be found in cardboard box on top of a brochure stand.",
+          url: "https://www.youtube.com/watch?v=ECBfVlEjyQU",
+        },
+        U1NTR0hISFNHSEhHU0hIR0hIU1NHR0dHU0hISEdHSFNHU0hHR0hTR0dISEhI: {
+          id: 7,
+          title: "Prague",
+          description: "Under the fridge in the old toy factory, Koníčky & Hračky.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode7-milenas-apartment-side-quests/s-rgIDV",
+        },
+        U1NTR0hISFNIR0dIU0dISEhIU1NHSEdHU0hHR0dTR0hHR0hTU0dISEhHU0hIR0hISA: {
+          id: 8,
+          title: "Prague",
+          description:
+            "In an apartment above Drahomir's fake police checkpoint, on the table under a cardboard box.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode8-artists-apartment-narrative-exposition/s-nAlX6",
+        },
+        U1NTSEdHR1NISEdHU0dHSEhIU1NISEdIU0hHSEhTSEhHR0hTU0dHSEhHU0hHSEhISA: {
+          id: 9,
+          title: "Prague",
+          description: "TF29 HQ, in the safe found in the infirmary.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode9-tf29-creation/s-PC5Ks",
+        },
+        U1NTSEhIR1NHR0hHU0hHSEhIU0dTR0dISFNHR0dHSFNTSEdHSFNIR0dIU0dISEhISA: {
+          id: 10,
+          title: "Prague",
+          description:
+            "TF29 HQ, in the NSN virtual space (accessible during M9: Checking Out the Men in Charge), on a floor on level 2.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode10-jim-miller-nsn/s-qiccW",
+        },
+        U1NTR0dHSFNHR0dIU0hHSEhIU0dTSEdIR1NHSEhISFNHU0dHR0hTR0hHSEhI: {
+          id: 11,
+          title: "Prague",
+          description: "In Růžička Station, on a raised ledge in the main hall.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode11-design-challenges-small-environments/s-9Nmf0",
+        },
+        U1NTSEdHSFNISEdHU0dISEhIU1NHR0dIU0hHR0dTSEdIR0hTU0dISEhTR0hISFNISEdISEg: {
+          id: 12,
+          title: "Prague",
+          description:
+            "Jensen's bedroom, in a secret stash in the floor next to the bed.",
+          url: "https://www.youtube.com/watch?v=LrrG7uErGTE",
+        },
+        U1NTR0hHR1NHSEhIU0hHR0hIU0dTR0hISFNHR0hISFNHU0dHR0hTR0dISEhI: {
+          id: 13,
+          title: "Prague",
+          description: "In Jensen's apartment, under the fridge in the kitchen.",
+          url: "https://www.youtube.com/watch?v=6zT1iRVu77Q",
+        },
+        U1NTR0dHR1NIR0dHU0hHSEhIU1NHSEhIR1NIR0hHSFNTR0hISFNIR0hIU0hHR0hISA: {
+          id: 14,
+          title: "Prague",
+          description:
+            "In Koller's dungeon, there's a vent near the elevator, hidden behind a picture. On the other side of the vent there's a room with a safe. The triangle and a praxis kit are inside the safe.",
+          url: "https://www.youtube.com/watch?v=bP0Kzh2eecs",
+        },
+        U1NTSEdHR1NHR0hIU0hHSEhIU1NHR0hIR1NHSEhHSFNTSEdISFNHR0dIU0dHR0hISA: {
+          id: 15,
+          title: "Prague",
+          description: "In a vent in Otar Botkoveli's office upstairs in his casino.",
+          url: "https://www.youtube.com/watch?v=rgY1RBRAut4",
+        },
+        U1NTR0dISFNIR0hHU0hIR0hIU1NHSEhHU0dHSEhTSEdHSEhTU0dISEhTSEdISEdISA: {
+          id: 16,
+          title: "Prague",
+          description:
+            "In Chikane's place, in a hidden room behind a poster with two airplanes.",
+          url: "https://www.youtube.com/watch?v=LxZFWAw6NwM",
+        },
+        U1NTSEhIR1NIR0hHU0dIR0hIU1NISEdHU0dISEdTSEhHSEhTU0dIR0hHU0dISEhISA: {
+          id: 17,
+          title: "Prague",
+          description:
+            "In the Church of the MachineGod, near the front entrance is a blocked archway on the right side. Move the crate and hack the door to enter a small storage area. It's sitting on the shelves. ",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode17-church-of-the-machine-god/s-80ipO",
+        },
+        U1NTSEdISFNHSEdIU0hHSEhIU1NISEdIU0hIR0dHSFNHR1NHSEhISEg: {
+          id: 18,
+          title: "Prague",
+          description:
+            "In Allison Stanek's room on the top floor of the Church of the MachineGod is an attic area. Get up there and it'll be under a box above her terminal.",
+          url: "https://www.youtube.com/watch?v=nk94xQ07QeM",
+        },
+        U1NTR0dHR1NHR0hHU0hHR0hIU1NHR0dIU0hHR0dTSEdISEhTU0dISEhTR0hHSFNHR0hISEg: {
+          id: 19,
+          title: "Prague",
+          description: "Palisade Property Bank, in the Picus Vault.",
+          url: "https://www.youtube.com/watch?v=7wAkydh5hcA",
+        },
+        U1NTR0dHR1NHR0hHU0hHR0hIU1NHR0dIU0hHR0dTSEdISEhTU0dISEhTR0hHSFNHR0hISEg: {
+          id: 20,
+          title: "Prague",
+          description:
+            "Palisade Property Bank, CEO's office, in a level 1 safe in a secret room.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode20-palisadebank-breach/s-bmu2I",
+        },
+        U1NTSEdHSFNHSEdHU0hHR0hIU1NIR0dIU0hHR0hTSEdIR0hTU0hHSEhTR0hHSFNHSEdISEg: {
+          id: 21,
+          title: "Prague",
+          description:
+            "In Nomad Stanek's apartment (apt. 96 at Libuse Apartments), interact with an 'Antique Clock' near the window to open the hidden room, then check the boxes under the desk. The triangle is in the open box on the right.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode21-prague-hub-details/s-iTaPh",
+        },
+        U1NTR0dHSFNIR0hIU0dHR0hIU1NISEdHU0hIR0hTR0hHR0hTU0dHSEhTSEdHSFNISEdISEg: {
+          id: 22,
+          title: "Prague",
+          description:
+            "In Jim Miller's apartment (apt. 203 at 33 Hlavni), punch the boxing bag to access the secret room. The code is on a shelf under the laptop.",
+          url: "https://www.youtube.com/watch?v=TpMQYjlwIlw",
+        },
+        U1NTR0hIR1NIR0hHR0hTU0hHR0dTSEhIR1NHR0dISFNTSEhHSFNIR0hIU0dIR0hISA: {
+          id: 23,
+          title: "Prague",
+          description:
+            "In the ceiling of the LIMB clinic.  Climb on top of the archway to reach the vent entrance or use the klipspringer mod to jump through the hatch inside.",
+          url: "https://www.youtube.com/watch?v=ozICu8PCJdQ",
+        },
+        U1NTSEhHR1NHR0hIU0dHSEhIU1NHSEdHU0dIR0hTR0dHR0hTR1NHR0hIU0hHR0hISA: {
+          id: 24,
+          title: "Prague",
+          description:
+            "In the Dvali Theater (accessible after Golem City), reach the catwalks above the stage (they are on level 5). The triangle is on a spool of wire near a lamp.",
+          url: "https://www.youtube.com/watch?v=dZj4dBKLC0Q",
+        },
+        U1NTSEhIR1NHSEhIR0hTU0hISEdTSEhHR1NIR0dHSFNTR0dHSFNHR0hIU0dIR0hISA: {
+          id: 25,
+          title: "Prague",
+          description:
+            "Dvali Theater, inside Radich Nikoladze's office in the basement (labelled Manager's Office on the map). Use the button under the desk to reveal a hidden wall safe. The safe contains the triangle and a praxis kit.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode25-radichs-office-dvali/s-pGN8z",
+        },
+        U1NTR0hHR1NIR0hIU0hHR0hIU1NISEdIU0hIR0hTR0hHR0hTU0hHR0hTSEdISFNHSEdISEg: {
+          id: 26,
+          title: "Golem City",
+          description:
+            "Near the elevator in the market. Go up the flight of stairs to unit 150252. It's on the table on the right, next to the boxes.",
+          url: "https://www.youtube.com/watch?v=GRmNnSuXhas",
+        },
+        U1NTR0hISFNIR0hIU0dISEhIU1NIR0dHU0dHSEhTSEhIR0hTR1NHSEdIU0hIR0hISA: {
+          id: 27,
+          title: "Golem City",
+          description:
+            "Talos Rucker's office, inside the safe in the secret room (need Rucker's keycard to get in).",
+          url: "https://www.youtube.com/watch?v=jBlxtg_3OtM",
+        },
+        U1NTSEdHR1NHSEdHU0hIR0hIU1NISEhHU0dHSEdTSEhHSEhTU0hHR0hTR0hISEdISA: {
+          id: 28,
+          title: "GARM",
+          description:
+            "In the middle of a corridor between Hangar 1 and Hangar 2, on a cart with a laptop.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode28-ice-tunnel-design/s-YT54W",
+        },
+        U1NTR0hHSFNHR0hIU0hIR0hIU1NHSEhIU0hIR0hTR0hHSEhTU0dISEhTR0hHSFNIR0dISEg: {
+          id: 29,
+          title: "GARM",
+          description:
+            "In Hangar 1, go to the office on level 3 on the northern side. The triangle is under a cardbox to the left of the weapons cabinet.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode29-marchenkos-design/s-O7j1N",
+        },
+        U1NTSEdHSFNHR0dIU0dHR0hIU1NHSEhHU0hIR0dTR0dIR0hTR1NISEdIU0dHSEhISA: {
+          id: 30,
+          title: "GARM",
+          description:
+            "Hangar 2, in the boxguard maintenance tent, under one of the boxguards.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode30-swiss-alps-hangar-boxguard/s-YzQfr",
+        },
+        U1NTR0hHSFNHR0dIR0hTU0hIR0dTR0dIR1NISEdISFNTR0hISFNIR0hIU0hIR0hISA: {
+          id: 31,
+          title: "London",
+          description:
+            "In the north-east corner of level 7, look above for a near-ceiling vent that leads into a narrow maintenance area. The triangle is on a wall-mounted electrical box labelled S-29-A.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode31-final-map-level-design/s-qRr6K",
+        },
+        U1NTR0hHR1NHR0dHU0hHSEhIU1NIR0dIU0dHSEhTSEdISEhTU0dIR0hTR0hHSFNHSEdISEg: {
+          id: 32,
+          title: "London",
+          description:
+            "Found while investigating the catering area, in one of the lockers in a room with dead bodies (on level 4).",
+          url: "https://www.youtube.com/watch?v=UIFUE3yk7Q4",
+        },
+        U1NTR0hHR1NHR0dHU0hIR0hIU1NHSEhHU0dHR0hTSEhHSEhTU0hIR0hTR0dHSFNHSEhISEg: {
+          id: 33,
+          title: "London",
+          description:
+            "During Marchenko boss fight, go up the stairs and enter the office on the left. The code is near the security hub near the window.",
+          url: "https://soundcloud.com/eidosmontreal/trianglecode33-exhibition-hall-boss-fight/s-JJmWL",
+        },
+        U1NTR0hHR1NHR0dHU0hIR0hIU1NHSEhHU0dHR0hTSEhHSEhTU0hIR0hTR0dHSFNHSEhISEg: {
+          id: 34,
+          title: "London",
+          description:
+            "In the Meeting Room C110 (in the south-east of level 5), on a cabinet on the right.",
+          url: "https://deusex.fandom.com/wiki/File:Apex_Centre_hall_Remembering_Panchaea_concept.jpg",
+        },
+      };
+
+      const dbIRL = {
+        U1NTSEdIR1NHR0dIU0dHR0hIU0dTSEhIR1NIR0dHSFNTR0dISFNHR0dIU0dHSEhISA: {
+          id: 1,
+          title: "Mankind Divided announcement trailer",
+          description: "https://www.youtube.com/watch?v=q2kd7F3YFz8",
+          url: "https://www.youtube.com/watch?v=Z_eD3YN65fY",
+        },
+        U1NTSEdHSFNHSEhHU0hIR0hIU0dTSEdHSFNHSEhHSFNTSEdISEdHSEg: {
+          id: 2,
+          title: "Thank You from the DXMD team",
+          description: "https://www.youtube.com/watch?v=Aj9YUxKPZXI",
+          url: "https://deusex.fandom.com/wiki/File:Ivan_Berk_-_concept.jpg",
+        },
+        U1NTR0hISFNIR0dIU0hHR0hIU1NISEdHU0hISEdTSEhHSEhTR1NIR0dIU0dISEhISA: {
+          id: 3,
+          title: "DXTV - Episode 0: A Window to the Future",
+          description: "https://www.youtube.com/watch?v=MR6yU1U3mAo",
+          url: "https://www.youtube.com/watch?v=MuS_fkEI7ik&feature=youtu.be",
+        },
+        U1NTSEhHSFNIR0hIU0dHR0hIU1NHR0dHU0hIR0hTR0dISEhTU0dISEhHU0dIR0hISA: {
+          id: 4,
+          title: "The E3 Debate",
+          description: "https://www.youtube.com/watch?v=iK7SX5kjEEE",
+          url: "https://www.youtube.com/watch?v=7fahNWTGg7g",
+        },
+        U1NTR0hIR1NIR0hIU0dHR0hIU1NHSEhHU0dISEhTR0hIR0hTU0hHR0hTR0dISFNIR0dISEg: {
+          id: 5,
+          title: "The E3 Debate",
+          description: "https://www.youtube.com/watch?v=iK7SX5kjEEE",
+          url: "https://deusex.fandom.com/wiki/File:E3_2015_promo_image.jpg",
+        },
+        U1NHU0hHR0dTR0hHSEhTU0hISEdTR0dHR1NISEdHSFNTR0dHSFNIR0hIU0hHR0hISA: {
+          id: 6,
+          title: "The E3 Trailer",
+          description: "https://www.youtube.com/watch?v=7GPUSrUJqfU",
+          url: "https://deusex.fandom.com/wiki/File:Golem_City_app_concept.jpg",
+        },
+        U1NTR0hIR0dTR0hHSEhTU0hHSEdTR0dHSFNISEdISFNHU0hIR0hHSEg: {
+          id: 7,
+          title: "Visual Works Behind-the-scenes",
+          description: "https://www.youtube.com/watch?v=Pro2L3Wyvb4",
+          url: "https://deusex.fandom.com/wiki/File:Titan_Shield_concept.jpg",
+        },
+        U1NTR0dISFNHR0dIR0hTU0dISEdTR0dIR1NHSEdHSFNTR0dISFNHSEdIR0hI: {
+          id: 8,
+          title: "World Premiere Gameplay Demo",
+          description: "https://www.youtube.com/watch?v=jh-iX2bxOjI",
+          url: "https://deusex.fandom.com/wiki/File:ARC_propaganda_poster.jpg",
+        },
+        U1NTSEhIR1NIR0hIU0hHSEhIU1NHR0dHU0dHR0hTSEhHR0hTR1NIR0dIU0dISEhISA: {
+          id: 9,
+          title: "Message from Warren Spector",
+          description: "https://www.youtube.com/watch?v=tDeZeR6JzjM",
+          url: "https://deusex.fandom.com/wiki/File:DX_concept_art.jpg",
+        },
+        U1NTR0hIR1NHSEhHU0dISEhIU0dTSEhHR1NHSEhHSFNHU0dHR0hTR0hISEhI: {
+          id: 10,
+          title: "DXTV - Gamescom Episode: New Features in Mankind Divided",
+          description: "https://www.youtube.com/watch?v=j402ctojOfU",
+          url: "https://www.youtube.com/watch?v=TpMQYjlwIlw",
+        },
+        U1NTR0hHSFNIR0dIU0hHSEhIU1NISEdHU0dHSEhTR0hHSEhTU0dHR0hTR0dHSFNIR0hISEg: {
+          id: 11,
+          title: "On the box of the promotional Adam Jensen figurine.",
+          description: "",
+          url: "https://www.youtube.com/watch?v=BeXlEQmGqa4",
+        },
+        U1NTR0dHSFNIR0dIU0dIR0hIU1NIR0hIU0dHR0dTSEdHSEhTU0dIR0hTSEhHSFNHR0hISEg: {
+          id: 12,
+          title:
+            "On the 'Keep Our Streets Human!' poster (an anti-augmentation propaganda poster that acts as an advertisement for the game).",
+          description: "https://deusex.fandom.com/wiki/File:Keep_Our_Streets_Human.jpg",
+          url: "https://deusex.fandom.com/wiki/File:ARC_propaganda_poster_2.jpg",
+        },
+        U1NTR0dHSFNIR0dIU0dIR0hIU1NIR0hIU0dHR0dTSEdHSEhTU0dIR0hTSEhHSFNHR0hISEg: {
+          id: 12,
+          title:
+            "On the 'Protect Our Future' poster (another anti-augmentation propaganda poster that acts as an advertisement for the game).",
+          description:
+            "https://deusex.fandom.com/wiki/File:Protect_Our_Future_poster.jpg",
+          url: "https://deusex.fandom.com/wiki/File:ARC_machines_dont_bleed_poster.jpg",
+        },
+        U1NTR0dHSFNISEdIU0dHR0dIU1NHSEdHU0hHSEhTR0hIR0hTU0dHR0hTR0dHR1NIR0hISEg: {
+          id: 12,
+          title:
+            "On the 'Are Your Children Safe?' poster (another anti-augmentation propaganda poster that acts as an advertisement for the game).",
+          description:
+            "https://deusex.fandom.com/wiki/File:Are_Your_Children_Safe_poster.jpg",
+          url: "https://deusex.fandom.com/wiki/File:ARC_Stand_With_Us_poster.jpg",
+        },
+        U1NTSEdHSFNHSEdIU0hHR0hIU1NHR0hIU0dIR0dTR0hHSEhTR1NISEdIR0hI: {
+          id: 13,
+          title: "DXTV - First Hands-on Episode",
+          description: "https://www.youtube.com/watch?v=dZj4dBKLC0Q",
+          url: "https://www.youtube.com/watch?v=8_XnoZvwbjg",
+        },
+        U1NTR0dHSFNHR0hIU0dHR0hIU1NHR0hHU0dHR0dTR0hHR0hTU0hIR0hTR0hHSFNIR0dISEg: {
+          id: 14,
+          title: "DXMD - Adam Jensen 2.0 Trailer",
+          description:
+            "https://deusex.fandom.com/wiki/File:NA_Deus_Ex_Mankind_Divided_-_Adam_Jensen_2.0_Trailer",
+          url: "https://www.youtube.com/watch?v=4rLJkExlEIs",
+        },
+        U1NTR0hHSFNISEhHR0hTU0hHSEdTR0hIR1NHR0dISFNHU0dHSEhTR0hISEhI: {
+          id: 15,
+          title: "Deus Ex Universe: Children's Crusade Issue 1",
+          description:
+            "https://deusex.fandom.com/wiki/Deus_Ex_Universe:_Children%27s_Crusade_Issue_1",
+          url: "https://www.youtube.com/watch?v=dd4eqgI5DEg",
+        },
+        U1NTR0dHSFNIR0dIU0dHR0hIU1NIR0hIU0dHSEhTSEdISEhTU0dHSEhTR0dISFNHR0hISEg: {
+          id: 16,
+          title: "Deus Ex Universe: Children's Crusade Issue 2",
+          description:
+            "https://deusex.fandom.com/wiki/Deus_Ex_Universe:_Children%27s_Crusade_Issue_2",
+          url: "https://www.youtube.com/watch?v=IqlyFklYxR0",
+        },
+        U1NTR0dISFNHSEdIU0dHR0hIU1NHSEdIU0dISEhTR0dHR0hTR1NHR0hIU0dISEhISA: {
+          id: 17,
+          title: "Deus Ex Universe: Children's Crusade Issue 3",
+          description:
+            "https://deusex.fandom.com/wiki/Deus_Ex_Universe:_Children%27s_Crusade_Issue_3",
+          url: "https://www.youtube.com/watch?v=dOEkEDUgl8c",
+        },
+        U1NTR0hHSFNISEdHU0dISEhIU1NISEhHU0hIR0hTSEdISEhTU0dIR0hTSEdHSFNHR0hISEg: {
+          id: 18,
+          title: "Deus Ex Universe: Children's Crusade Issue 5",
+          description:
+            "https://deusex.fandom.com/wiki/Deus_Ex_Universe:_Children%27s_Crusade_Issue_5",
+          url: "https://www.youtube.com/watch?v=gpvvJKYSpmI",
+        },
+        U1NTR0hHR1NHSEhIU0hIR0hIU1NIR0hHU0hHSEdTR0dHSEhTU0dIR0hTSEhHSFNIR0dISEg: {
+          id: 19,
+          title: "Deus Ex Mankind Divided - 101 Trailer",
+          description:
+            "https://deusex.fandom.com/wiki/File:NA_Deus_Ex_Mankind_Divided_-_101_Trailer",
+          url: "https://deusex.fandom.com/wiki/File:Bob_Page_concept_art.jpg",
+        },
+        U1NTR0hHSFNIR0hHU0dHSEhIU1NIR0dIU0dISEhTSEhHR0hTU0dHSEhTSEdISFNIR0hISEg: {
+          id: 20,
+          title: "Deus Ex Mankind Divided - The Mechanical Apartheid",
+          description:
+            "https://deusex.fandom.com/wiki/File:Deus_Ex_Mankind_Divided_-_The_Mechanical_Apartheid",
+          url: "https://deusex.fandom.com/wiki/File:Aug_Natural_signs.jpg",
+        },
+        U1NTR0hHSFNHSEdIR0hTU0dISEhTR0hHSFNHR0hISFNTSEdHSFNHSEdIU0dIR0hISA: {
+          id: 21,
+          title: "Deus Ex Mankind Divided - Breach - Reveal Trailer",
+          description:
+            "https://deusex.fandom.com/wiki/File:Deus_Ex_Mankind_Divided_%E2%80%93_Breach_-_Reveal_Trailer",
+          url: "https://deusex.fandom.com/wiki/File:Breach_shadowchild.jpg",
+        },
+        U1NTR0hHSFNHSEdIU0dHR0hIU1NHSEhHU0hIR0dTR0dHSEhTU0dHR0hTSEhHSFNHR0hISEg: {
+          id: 22,
+          title: "The Art of Deus Ex Universe",
+          description: "https://deusex.fandom.com/wiki/The_Art_of_Deus_Ex_Universe",
+          url: "https://www.youtube.com/watch?v=5GM4I5ebqeE",
+        },
+      };
+
+      const canvas = document.getElementById("glcanvas");
+      const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
+
+      // --- 2. SHADER SETUP ---
+      const vsSource = `
+            attribute vec2 a_position;
+            attribute vec3 a_color;
+            varying vec3 v_color;
+            void main() { gl_Position = vec4(a_position, 0.0, 1.0); v_color = a_color; }
+        `;
+      const fsSource = `
+            precision mediump float;
+            varying vec3 v_color;
+            void main() { gl_FragColor = vec4(v_color, 1.0); }
+        `;
+
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+
+      const positionAttr = gl.getAttribLocation(program, "a_position");
+      const colorAttr = gl.getAttribLocation(program, "a_color");
+      const positionBuffer = gl.createBuffer();
+      const colorBuffer = gl.createBuffer();
+
+      // --- 3. GEOMETRY & CONSTANTS ---
+      const colorDark = [0.06, 0.06, 0.06];
+      // shaded dark
+      //const colorGold = [0.81, 0.66, 0.4];
+      const colorGold = [0.761, 0.584, 0.294];
+
+      const s = 1.7;
+      const h = (s * Math.sqrt(3)) / 2;
+      const baseY = -h / 3 - 0.05;
+      const topY = (2 * h) / 3 - 0.05;
+
+      const v1 = [0, topY];
+      const v2 = [-s / 2, baseY];
+      const v3 = [s / 2, baseY];
+
+      // --- 4. FRACTAL LOGIC ---
+      const STATE_GOLD = "G";
+      const STATE_SPLIT = "S";
+      const STATE_HIDDEN = "H";
+
+      class Triangle {
+        constructor(v1, v2, v3, level) {
+          this.v1 = v1;
+          this.v2 = v2;
+          this.v3 = v3;
+          this.level = level;
+          this.state = STATE_GOLD;
+          this.isLocked = false; // New property to track interactivity
+          this.children = [];
+
+          if (this.level == 0 || this.level == 1) {
+            this.split();
+          }
+        }
+
+        split() {
+          if (this.level >= 3) return;
+
+          let m1 = [(this.v1[0] + this.v2[0]) / 2, (this.v1[1] + this.v2[1]) / 2];
+          let m2 = [(this.v2[0] + this.v3[0]) / 2, (this.v2[1] + this.v3[1]) / 2];
+          let m3 = [(this.v1[0] + this.v3[0]) / 2, (this.v1[1] + this.v3[1]) / 2];
+
+          this.children = [
+            new Triangle(this.v1, m1, m3, this.level + 1),
+            new Triangle(m1, this.v2, m2, this.level + 1),
+            new Triangle(m3, m2, this.v3, this.level + 1),
+            new Triangle(m1, m2, m3, this.level + 1),
+          ];
+
+          // --- NEW: Link children to this parent ---
+          this.children.forEach((child) => (child.parent = this));
+
+          this.state = STATE_SPLIT;
+
+          if (this.level < 2) {
+            this.children[3].state = STATE_HIDDEN;
+            this.children[3].isLocked = true;
+          } else {
+            this.children[3].state = STATE_GOLD;
+            this.children[3].isLocked = false;
+          }
+        }
+
+        merge() {
+          // Only allow merge if the node isn't inherently part of a locked structure
+          if (this.isLocked) return;
+          this.state = STATE_GOLD;
+          this.children = [];
+        }
+
+        contains(p) {
+          const p0 = this.v1,
+            p1 = this.v2,
+            p2 = this.v3;
+          const A =
+            0.5 *
+            (-p1[1] * p2[0] +
+              p0[1] * (-p1[0] + p2[0]) +
+              p0[0] * (p1[1] - p2[1]) +
+              p1[0] * p2[1]);
+          const sign = A < 0 ? -1 : 1;
+          const s =
+            (p0[1] * p2[0] -
+              p0[0] * p2[1] +
+              (p2[1] - p0[1]) * p[0] +
+              (p0[0] - p2[0]) * p[1]) *
+            sign;
+          const t =
+            (p0[0] * p1[1] -
+              p0[1] * p1[0] +
+              (p0[1] - p1[1]) * p[0] +
+              (p1[0] - p0[0]) * p[1]) *
+            sign;
+          return s >= 0 && t >= 0 && s + t <= 2 * A * sign;
+        }
+
+        findClickedNode(p) {
+          if (!this.contains(p)) return null;
+
+          if (this.state === STATE_SPLIT && this.children.length > 0) {
+            for (let child of this.children) {
+              let hit = child.findClickedNode(p);
+              if (hit) return hit;
+            }
+          }
+          return this;
+        }
+
+        collectRenderData(positions, colors) {
+          if (this.state === STATE_SPLIT) {
+            for (let child of this.children) child.collectRenderData(positions, colors);
+          } else if (this.state === STATE_GOLD) {
+            const GAP_FACTOR = 0.97;
+            const cx = (this.v1[0] + this.v2[0] + this.v3[0]) / 3;
+            const cy = (this.v1[1] + this.v2[1] + this.v3[1]) / 3;
+
+            const sv1 = [
+              cx + (this.v1[0] - cx) * GAP_FACTOR,
+              cy + (this.v1[1] - cy) * GAP_FACTOR,
+            ];
+            const sv2 = [
+              cx + (this.v2[0] - cx) * GAP_FACTOR,
+              cy + (this.v2[1] - cy) * GAP_FACTOR,
+            ];
+            const sv3 = [
+              cx + (this.v3[0] - cx) * GAP_FACTOR,
+              cy + (this.v3[1] - cy) * GAP_FACTOR,
+            ];
+
+            positions.push(...sv1, ...sv2, ...sv3);
+            colors.push(...colorGold, ...colorGold, ...colorGold);
+          }
+        }
+
+        generateStateString() {
+          if (this.state === STATE_SPLIT) {
+            return "S" + this.children.map((c) => c.generateStateString()).join("");
+          }
+          return this.state;
+        }
+      }
+
+      const rootTriangle = new Triangle(v1, v2, v3, 0);
+      let vertexCount = 0;
+
+      // --- 5. HASHING & METADATA LOOKUP ---
+      function updateMetadata() {
+        const rawString = rootTriangle.generateStateString();
+        const hash = btoa(rawString).replace(/=/g, "");
+        document.getElementById("displayHash").innerText = `Hash: ${hash}`;
+
+        const meta = findMeta(hash);
+        const titleEl = document.getElementById("displayTitle");
+        const descEl = document.getElementById("displayDesc");
+        const urlEl = document.getElementById("displayUrl");
+
+        // Sync sidebar highlight
+        document
+          .querySelectorAll(".preset-item")
+          .forEach((el) => el.classList.remove("active"));
+        const activeItem = document.getElementById(`preset-${hash}`);
+        if (activeItem) activeItem.classList.add("active");
+
+        if (meta) {
+          titleEl.innerText = meta.title;
+          descEl.innerText = meta.description;
+          urlEl.innerHTML = `<a href="${meta.url}" target="_blank">Link to &rarr;</a>`;
+        } else {
+          titleEl.innerText = "Custom Configuration";
+          descEl.innerText = "This pattern is not in the database.";
+          urlEl.innerHTML = "";
+        }
+        return hash;
+      }
+
+      // --- 6. RENDERING ---
+      function updateBuffers() {
+        let positions = [];
+        let colors = [];
+
+        // Background dark triangle for outer border and negative space
+        const scale = 1.05;
+        const cy = (v1[1] + v2[1] + v3[1]) / 3;
+        const scalePoint = (p) => [p[0] * scale, (p[1] - cy) * scale + cy];
+        positions.push(...scalePoint(v1), ...scalePoint(v2), ...scalePoint(v3));
+        colors.push(...colorDark, ...colorDark, ...colorDark);
+
+        rootTriangle.collectRenderData(positions, colors);
+        vertexCount = positions.length / 2;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+      }
+
+      function draw() {
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0.94, 0.94, 0.94, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(program);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(positionAttr);
+        gl.vertexAttribPointer(positionAttr, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.enableVertexAttribArray(colorAttr);
+        gl.vertexAttribPointer(colorAttr, 3, gl.FLOAT, false, 0, 0);
+
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+      }
+
+      // --- 2. RECONSTRUCTION ENGINE ---
+      function loadFromHash(hash) {
+        try {
+          const stateString = atob(hash);
+          const chars = stateString.split("");
+
+          // Reset to start
+          rootTriangle.merge();
+
+          function applyRecursive(node, charList) {
+            const char = charList.shift();
+            if (char === "S") {
+              node.split();
+              // Since our split always creates 4 children, we traverse 4 times
+              node.children.forEach((child) => applyRecursive(child, charList));
+            } else {
+              node.state = char === "G" ? STATE_GOLD : STATE_HIDDEN;
+            }
+          }
+
+          applyRecursive(rootTriangle, chars);
+          refresh();
+        } catch (e) {
+          console.error("Failed to load configuration", e);
+        }
+      }
+
+      // --- 3. SIDEBAR RENDERING ---
+      function renderSidebar() {
+        const inGameContainer = document.getElementById("inGameList");
+        const irlContainer = document.getElementById("irlList");
+
+        inGameContainer.innerHTML = "";
+        irlContainer.innerHTML = "";
+
+        function populate(data, container, sectionName) {
+          Object.keys(data).forEach((hash) => {
+            const itemData = data[hash];
+            const itemEl = document.createElement("div");
+            itemEl.className = "preset-item";
+            itemEl.id = `preset-${hash}`;
+
+            // New structure: Header (ID + Title) on top, Description below
+            itemEl.innerHTML = `
+        <div class="preset-header">
+          <span class="preset-id">${sectionName} #${itemData.id}</span>
+          <span class="preset-name">${itemData.title}</span>
+        </div>
+        <div class="preset-desc">${itemData.description}</div>
+      `;
+
+            itemEl.onclick = () => loadFromHash(hash);
+            container.appendChild(itemEl);
+          });
+        }
+
+        populate(dbInGame, inGameContainer, "In-Game");
+        populate(dbIRL, irlContainer, "IRL");
+      }
+
+      function refresh() {
+        updateBuffers();
+        draw();
+
+        // updateMetadata should return the current hash
+        const currentHash = updateMetadata();
+
+        // Handle Highlight sync across both sections
+        document
+          .querySelectorAll(".preset-item")
+          .forEach((el) => el.classList.remove("active"));
+        const activeItem = document.getElementById(`preset-${currentHash}`);
+        if (activeItem) {
+          activeItem.classList.add("active");
+          activeItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }
+
+      function findMeta(hash) {
+        return dbInGame[hash] || dbIRL[hash];
+      }
+
+      // Initial Call
+      renderSidebar();
+
+      // --- 7. INTERACTION LOGIC ---
+      canvas.addEventListener("mousedown", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / canvas.width) * 2 - 1;
+        const y = -(((e.clientY - rect.top) / canvas.height) * 2 - 1);
+
+        let clickedNode = rootTriangle.findClickedNode([x, y]);
+
+        if (clickedNode) {
+          const isShift = e.shiftKey;
+          const isAlt = e.altKey;
+
+          if (isAlt) {
+            // ALT-CLICK: Merge the parent of the clicked node
+            if (clickedNode.parent) {
+              clickedNode.parent.merge();
+              refresh();
+            }
+          } else if (isShift) {
+            // SHIFT-CLICK: Subdivide (only if not locked)
+            if (!clickedNode.isLocked && clickedNode.state === STATE_GOLD) {
+              clickedNode.split();
+              refresh();
+            }
+          } else {
+            // REGULAR CLICK: Toggle visibility (only if not locked)
+            if (!clickedNode.isLocked) {
+              clickedNode.state =
+                clickedNode.state === STATE_GOLD ? STATE_HIDDEN : STATE_GOLD;
+              refresh();
+            }
+          }
+        }
+      });
+
+      // Prevent right-click context menu to keep interactions clean
+      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      // Initial setup
+      refresh();
+    </script>
+  </body>
+</html>
