@@ -7,10 +7,13 @@ Submit your pull requests to add more, make changes, improve usability, etc.
 
 To submit a new triangle, submit as follows:
 
-hash from generator: {
+
+```
+hash_from_generator: {
   title: "what best describes what the triangle code is, or it's unlock title",
   description: "where it came from in game, in real life, link, etc",
   url: "where it goes to",
 },
+```
 
 [Fandom Triangle Codes](https://deusex.fandom.com/wiki/Triangle_Codes)
